@@ -1,55 +1,85 @@
 /* style.css */
-.quick-format-toolbar {
+#quick-formatting-bar {
     display: flex;
     width: 100%;
-    height: 28px; /* Compact height */
-    background: var(--smart-theme-bg, #13141f);
-    border: 1px solid var(--smart-theme-border, rgba(255,255,255,0.1));
-    border-bottom: none;
-    border-radius: 10px 10px 0 0; /* Rounded top corners matching input */
+    height: 28px;
+    background-color: var(--smart-theme-bg, #13141f);
+    border-bottom: 1px solid var(--smart-theme-border, rgba(255,255,255,0.1));
+    border-radius: 10px 10px 0 0;
+    transition: all 0.3s ease;
+    position: relative;
+    user-select: none;
     overflow: hidden;
     margin-bottom: 0;
 }
 
-.quick-format-btn {
+/* Edit Mode Styles */
+#quick-formatting-bar.edit-mode {
+    z-index: 2000; /* SillyTavern standard high z-index */
+    border: 2px solid var(--smart-theme-accent-color, #9d4edd);
+    box-shadow: 0 0 15px var(--smart-theme-accent-color, #9d4edd);
+    overflow: visible;
+}
+
+.qf-btn {
     flex: 1;
-    background: rgba(0, 0, 0, 0.2);
-    color: var(--smart-theme-body-color, #ccc);
+    background: transparent;
     border: none;
     border-right: 1px solid var(--smart-theme-border, rgba(255,255,255,0.05));
+    color: var(--smart-theme-body-color, #ccc);
     font-family: monospace;
-    font-size: 11px;
-    text-transform: uppercase;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.2s ease;
+    font-size: 11px;
+    text-transform: uppercase;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
+    transition: background 0.2s, color 0.2s;
 }
 
-.quick-format-btn:last-child {
-    border-right: none;
-}
-
-.quick-format-btn:hover {
+.qf-btn:hover {
     background-color: var(--smart-theme-accent-color, #9d4edd);
-    color: #fff;
-    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+    color: white;
 }
 
-/* Vertical layout wrapper */
+.qf-btn.magic-wand {
+    color: #ffaa00;
+}
+
+.qf-btn.magic-wand.generating {
+    color: #ff4444;
+    animation: pulse 1s infinite;
+}
+
+/* Edit Mode Controls (Appended dynamically) */
+.qf-edit-controls {
+    position: absolute;
+    top: -35px;
+    right: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(5px);
+    padding: 5px;
+    border-radius: 5px;
+    display: flex;
+    gap: 5px;
+    border: 1px solid var(--smart-theme-border);
+}
+
+.qf-edit-btn {
+    font-size: 10px;
+    padding: 2px 6px;
+    border: 1px solid var(--smart-theme-dim);
+    background: var(--smart-theme-bg);
+    color: var(--smart-theme-text);
+    cursor: pointer;
+}
+
+/* Layout Wrapper */
 .st-format-wrapper {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-width: 0;
-}
-
-/* Adjust textarea to remove top rounded corners when toolbar is present */
-.st-format-wrapper textarea#send_textarea {
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
-    border-top: none !important;
 }
