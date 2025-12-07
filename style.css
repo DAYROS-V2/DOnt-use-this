@@ -1,0 +1,55 @@
+/* style.css */
+.quick-format-toolbar {
+    display: flex;
+    width: 100%;
+    height: 28px; /* Compact height */
+    background: var(--smart-theme-bg, #13141f);
+    border: 1px solid var(--smart-theme-border, rgba(255,255,255,0.1));
+    border-bottom: none;
+    border-radius: 10px 10px 0 0; /* Rounded top corners matching input */
+    overflow: hidden;
+    margin-bottom: 0;
+}
+
+.quick-format-btn {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--smart-theme-body-color, #ccc);
+    border: none;
+    border-right: 1px solid var(--smart-theme-border, rgba(255,255,255,0.05));
+    font-family: monospace;
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.quick-format-btn:last-child {
+    border-right: none;
+}
+
+.quick-format-btn:hover {
+    background-color: var(--smart-theme-accent-color, #9d4edd);
+    color: #fff;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Vertical layout wrapper */
+.st-format-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Adjust textarea to remove top rounded corners when toolbar is present */
+.st-format-wrapper textarea#send_textarea {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-top: none !important;
+}
