@@ -1,96 +1,55 @@
 /* style.css */
-#quick-formatting-bar {
+.quick-format-toolbar {
     display: flex;
     width: 100%;
-    height: 28px;
-    background-color: var(--smart-theme-bg, #13141f);
-    border-bottom: 1px solid var(--smart-theme-border, rgba(255,255,255,0.1));
-    border-radius: 10px 10px 0 0;
-    transition: all 0.3s ease;
-    position: relative;
-    user-select: none;
+    height: 28px; /* Compact height */
+    background: var(--smart-theme-bg, #13141f);
+    border: 1px solid var(--smart-theme-border, rgba(255,255,255,0.1));
+    border-bottom: none;
+    border-radius: 10px 10px 0 0; /* Rounded top corners matching input */
     overflow: hidden;
     margin-bottom: 0;
-    align-items: center;
 }
 
-/* Edit Mode Styles */
-#quick-formatting-bar.edit-mode {
-    z-index: 20000; /* High Z-index to float above */
-    border: 2px solid var(--smart-theme-accent-color, #9d4edd);
-    box-shadow: 0 0 15px var(--smart-theme-accent-color, #9d4edd);
-    overflow: visible;
-}
-
-.qf-btn {
+.quick-format-btn {
     flex: 1;
-    height: 100%;
-    background: transparent;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--smart-theme-body-color, #ccc);
     border: none;
     border-right: 1px solid var(--smart-theme-border, rgba(255,255,255,0.05));
-    color: var(--smart-theme-body-color, #ccc);
     font-family: monospace;
-    font-weight: bold;
-    cursor: pointer;
     font-size: 11px;
     text-transform: uppercase;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    transition: background 0.2s, color 0.2s;
-    white-space: nowrap;
 }
 
-.qf-btn:last-child {
+.quick-format-btn:last-child {
     border-right: none;
 }
 
-.qf-btn:hover {
+.quick-format-btn:hover {
     background-color: var(--smart-theme-accent-color, #9d4edd);
-    color: white;
+    color: #fff;
+    text-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
-/* Disabled state in edit mode */
-#quick-formatting-bar.edit-mode .qf-btn:not(.qf-edit-control) {
-    pointer-events: none;
-    opacity: 0.4;
-}
-
-.qf-btn.magic-wand {
-    color: #ffaa00;
-}
-
-.qf-btn.magic-wand.generating {
-    color: #ff4444;
-    animation: pulse 1s infinite;
-}
-
-/* Edit Mode Controls */
-.qf-edit-control {
-    flex: 0 0 auto;
-    padding: 0 8px;
-    font-weight: bold;
-    color: var(--smart-theme-text);
-    background: var(--smart-theme-bg);
-    border-left: 1px solid var(--smart-theme-border);
-}
-
-.qf-edit-control:hover {
-    background: var(--smart-theme-panel);
-}
-
-/* Layout Wrapper */
+/* Vertical layout wrapper */
 .st-format-wrapper {
     display: flex;
     flex-direction: column;
     flex: 1;
     min-width: 0;
-    position: relative;
 }
 
-@keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+/* Adjust textarea to remove top rounded corners when toolbar is present */
+.st-format-wrapper textarea#send_textarea {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-top: none !important;
 }

@@ -1,7 +1,7 @@
 {
-  "display_name": "Quick Formatting & AI Tools",
+  "display_name": "Compact Formatting Bar",
   "author": "ReactGen",
-  "version": "2.1.0",
+  "version": "1.2.0",
   "loading_order": 100,
   "requires": [],
   "css": "style.css",
