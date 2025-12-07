@@ -11,11 +11,12 @@
     user-select: none;
     overflow: hidden;
     margin-bottom: 0;
+    align-items: center;
 }
 
 /* Edit Mode Styles */
 #quick-formatting-bar.edit-mode {
-    z-index: 2000; /* SillyTavern standard high z-index */
+    z-index: 20000; /* High Z-index to float above */
     border: 2px solid var(--smart-theme-accent-color, #9d4edd);
     box-shadow: 0 0 15px var(--smart-theme-accent-color, #9d4edd);
     overflow: visible;
@@ -23,6 +24,7 @@
 
 .qf-btn {
     flex: 1;
+    height: 100%;
     background: transparent;
     border: none;
     border-right: 1px solid var(--smart-theme-border, rgba(255,255,255,0.05));
@@ -37,11 +39,22 @@
     justify-content: center;
     padding: 0;
     transition: background 0.2s, color 0.2s;
+    white-space: nowrap;
+}
+
+.qf-btn:last-child {
+    border-right: none;
 }
 
 .qf-btn:hover {
     background-color: var(--smart-theme-accent-color, #9d4edd);
     color: white;
+}
+
+/* Disabled state in edit mode */
+#quick-formatting-bar.edit-mode .qf-btn:not(.qf-edit-control) {
+    pointer-events: none;
+    opacity: 0.4;
 }
 
 .qf-btn.magic-wand {
@@ -53,27 +66,18 @@
     animation: pulse 1s infinite;
 }
 
-/* Edit Mode Controls (Appended dynamically) */
-.qf-edit-controls {
-    position: absolute;
-    top: -35px;
-    right: 0;
-    background: rgba(0,0,0,0.8);
-    backdrop-filter: blur(5px);
-    padding: 5px;
-    border-radius: 5px;
-    display: flex;
-    gap: 5px;
-    border: 1px solid var(--smart-theme-border);
+/* Edit Mode Controls */
+.qf-edit-control {
+    flex: 0 0 auto;
+    padding: 0 8px;
+    font-weight: bold;
+    color: var(--smart-theme-text);
+    background: var(--smart-theme-bg);
+    border-left: 1px solid var(--smart-theme-border);
 }
 
-.qf-edit-btn {
-    font-size: 10px;
-    padding: 2px 6px;
-    border: 1px solid var(--smart-theme-dim);
-    background: var(--smart-theme-bg);
-    color: var(--smart-theme-text);
-    cursor: pointer;
+.qf-edit-control:hover {
+    background: var(--smart-theme-panel);
 }
 
 /* Layout Wrapper */
@@ -82,4 +86,11 @@
     flex-direction: column;
     flex: 1;
     min-width: 0;
+    position: relative;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
 }
