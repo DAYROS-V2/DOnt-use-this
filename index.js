@@ -1,80 +1,90 @@
-// index.js
-jQuery(document).ready(function () {
+
+// SillyTavern Extension: Quick Formatting (Floating)
+(function() {
+    const extensionName = "Quick Formatting";
+    const extensionId = "quick-formatting-floating";
+
     const buttons = [
-        { label: '**', start: '**', end: '**', title: 'Action (**)' },
-        { label: '""', start: '"', end: '"', title: 'Dialogue (")' },
-        { label: 'OOC', start: '(OOC: ', end: ')', title: 'OOC' },
-        { label: 'CODE', start: '```', end: '```', title: 'Code/Thought' }
+        { label: '**', start: '**', end: '**', title: 'Action / Description' },
+        { label: '""', start: '"', end: '"', title: 'Dialogue' },
+        { label: 'OOC', start: '(OOC: ', end: ')', title: 'Out of Character' },
+        { label: 'Code', start: '```\n', end: '\n```', title: 'Internal Thought / Code' }
     ];
 
-    // Create toolbar container
-    const $toolbar = $('<div class="quick-format-toolbar"></div>');
+    function insertAtCursor(startTag, endTag) {
+        const textarea = document.getElementById('send_textarea');
+        if (!textarea) return;
 
-    buttons.forEach(btn => {
-        const $btn = $('<button class="quick-format-btn" title="' + btn.title + '">' + btn.label + '</button>');
-        
-        $btn.on('click', function(e) {
-            e.preventDefault();
-            const textarea = document.getElementById('send_textarea');
-            if (!textarea) return;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selectedText = text.substring(start, end);
 
-            const start = textarea.selectionStart;
-            const end = textarea.selectionEnd;
-            const text = textarea.value;
-            const before = text.substring(0, start);
-            const selected = text.substring(start, end);
-            const after = text.substring(end);
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        const newValue = before + startTag + selectedText + endTag + after;
 
-            textarea.value = before + btn.start + selected + btn.end + after;
+        textarea.value = newValue;
+
+        const newCursorPos = start + startTag.length + selectedText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+        textarea.focus();
+
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function createFloatingToolbar() {
+        const textarea = document.getElementById('send_textarea');
+        if (!textarea) return;
+
+        if (document.getElementById('qt-floating-toolbar')) return;
+
+        // Ensure the parent container can handle absolute positioning
+        const container = textarea.parentElement;
+        if (getComputedStyle(container).position === 'static') {
+            container.style.position = 'relative';
+        }
+
+        const toolbar = document.createElement('div');
+        toolbar.id = 'qt-floating-toolbar';
+        toolbar.className = 'qt-floating-toolbar';
+
+        buttons.forEach((btnConfig, index) => {
+            const btn = document.createElement('div');
+            btn.className = 'qt-btn';
+            btn.textContent = btnConfig.label;
+            btn.title = btnConfig.title;
             
-            // Trigger input event for frameworks like React/Vue used in ST
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent focus loss issues
+                insertAtCursor(btnConfig.start, btnConfig.end);
+            });
 
-            textarea.focus();
+            toolbar.appendChild(btn);
             
-            // Cursor placement logic
-            if (selected.length === 0) {
-                 const newPos = start + btn.start.length;
-                 textarea.setSelectionRange(newPos, newPos);
-            } else {
-                 const newPos = start + btn.start.length + selected.length + btn.end.length;
-                 textarea.setSelectionRange(newPos, newPos);
+            // Add a small visual separator for grouping (optional logic)
+            if (index === 1 || index === 2) {
+                const sep = document.createElement('div');
+                sep.className = 'qt-separator';
+                toolbar.appendChild(sep);
             }
         });
 
-        $toolbar.append($btn);
+        // Append to the container so it floats relative to the text area
+        container.appendChild(toolbar);
+    }
+
+    jQuery(document).ready(function() {
+        setTimeout(createFloatingToolbar, 1000);
+        
+        const observer = new MutationObserver((mutations) => {
+            if (!document.getElementById('qt-floating-toolbar')) {
+                createFloatingToolbar();
+            }
+        });
+        
+        const target = document.querySelector('#bottom-area') || document.body;
+        observer.observe(target, { childList: true, subtree: true });
     });
-
-    const injectExtension = () => {
-        const $textarea = $('#send_textarea');
-        
-        // Avoid duplicate injection
-        if ($('.quick-format-toolbar').length) return;
-        if (!$textarea.length) return;
-
-        // Create a wrapper to stack toolbar above textarea 
-        const $wrapper = $('<div class="st-format-wrapper"></div>');
-        
-        // Insert wrapper before textarea
-        $textarea.before($wrapper);
-        
-        // Move toolbar and textarea into wrapper
-        $wrapper.append($toolbar);
-        $wrapper.append($textarea);
-        
-        console.log('Compact Formatting Extension: Injected successfully.');
-    };
-
-    // Attempt injection with retries
-    setTimeout(injectExtension, 500);
-    setTimeout(injectExtension, 2000);
-    setTimeout(injectExtension, 5000);
-    
-    // Observer for dynamic UI reloads
-    const observer = new MutationObserver((mutations) => {
-        if (!document.querySelector('.quick-format-toolbar') && document.getElementById('send_textarea')) {
-            injectExtension();
-        }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-});
+})();

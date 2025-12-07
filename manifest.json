@@ -1,9 +1,8 @@
 {
-  "display_name": "Compact Formatting Bar",
-  "author": "ReactGen",
-  "version": "1.2.0",
-  "loading_order": 100,
-  "requires": [],
-  "css": "style.css",
-  "js": "index.js"
+    "name": "Quick Formatting (Floating)",
+    "version": "1.1.0",
+    "description": "Adds a floating menu with quick formatting buttons (Action, Dialogue, OOC, Thought) above the chat input.",
+    "author": "User",
+    "loading_order": 1,
+    "requires": []
 }
