@@ -46,10 +46,21 @@
                         <div id="qf_buttons_list" style="margin-left: 10px; display: flex; flex-direction: column; gap: 5px;"></div>
                     </div>
                     
-                    <!-- NEW GROUP TOGGLE -->
-                    <div class="checkbox_label" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
-                        <input id="qf_grouped_widgets" type="checkbox" /> 
-                        <span><b>Group Widgets (2x2 Grid)</b></span>
+                    <!-- GROUP TOGGLE & DROPDOWN -->
+                    <div style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px;">
+                        <div class="checkbox_label">
+                            <input id="qf_grouped_widgets" type="checkbox" /> 
+                            <span><b>Group Widgets</b></span>
+                        </div>
+                        
+                        <!-- THE NEW DROPDOWN (Hidden by default) -->
+                        <div id="qf_group_layout_wrapper" style="margin-left: 25px; margin-top: 5px; display: none;">
+                            <label style="font-size: 0.9em; opacity: 0.8;">Layout Style:</label>
+                            <select id="qf_group_layout" class="text_pole" style="width: 120px;">
+                                <option value="flat">Flat Line (1x4)</option>
+                                <option value="grid">Box Grid (2x2)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="checkbox_label" style="margin-top: 5px;">
@@ -92,7 +103,7 @@
                 </div>
             </details>
 
-            <!-- 3. AUTO REPLY -->
+            <!-- 3. AUTO REPLY (LIGHTBULB) -->
             <details class="qf-details">
                 <summary>Auto-Reply</summary>
                 <div class="qf-details-content">
@@ -118,7 +129,7 @@
                 </div>
             </details>
 
-            <!-- 4. MOODS -->
+            <!-- 4. MOODS (BOTTOM) -->
             <details class="qf-details">
                 <summary>Moods & Tones</summary>
                 <div class="qf-details-content">
