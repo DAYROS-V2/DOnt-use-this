@@ -34,9 +34,9 @@ const defaultSettings = {
     // --- 2. SPELLCHECKER SETTINGS ---
     spellProvider: 'openrouter', spellBase: 'https://openrouter.ai/api/v1', spellKeyOR: '', spellKeyOA: '', spellModel: '', 
     spellStream: true, spellContext: 5, spellTokens: 0,
-    spellTemp: 1.0, spellFreqPen: 0.0, spellPresPen: 0.0, spellRepPen: 1.0,
+    spellTemp: 0.2, spellFreqPen: 0.0, spellPresPen: 0.0, spellRepPen: 1.0,
     spellTopK: 0, spellTopP: 1.0, spellMinP: 0.0, spellTopA: 0.0, spellSeed: -1,
-    spellPrompt: 'Correct grammar and spelling.',
+    spellPrompt: 'You are a text processing engine. Your ONLY task is to correct grammar and spelling in the user\'s input inside <target_text> tags. Return ONLY the corrected string.',
 
     // --- 3. MOOD SETTINGS ---
     moodProvider: 'openrouter', moodBase: 'https://openrouter.ai/api/v1', moodKeyOR: '', moodKeyOA: '', moodModel: '',
@@ -50,7 +50,7 @@ const defaultSettings = {
     replyStream: true, replyContext: 10, replyTokens: 200,
     replyTemp: 0.8, replyFreqPen: 0.5, replyPresPen: 0.0, replyRepPen: 1.1,
     replyTopK: 40, replyTopP: 0.9, replyMinP: 0.0, replyTopA: 0.0, replySeed: -1,
-    replyPrompt: 'You are a creative ghostwriter for a Roleplay.',
+    replyPrompt: 'You are a ghostwriter for a Roleplay. Write the next logical response for the User persona based on the Chat History.',
 
     // Mood List
     moods: [
@@ -462,14 +462,13 @@ function toggleMoodDropdown() {
     setTimeout(() => { $(document).on('click.qfClose', (e) => { if (!$(e.target).closest('#qf-mood-dropdown, .qf-mood-container, .qf-group-container').length) { dropdown.remove(); $(document).off('click.qfClose'); } }); }, 100);
 }
 
-// --- AI LOGIC ---
+// --- AI LOGIC (UPDATED WITH ROLE SEPARATION) ---
 async function processAI(mode, customPrompt = null) {
     if (isGenerating) { if (abortController) abortController.abort(); isGenerating = false; renderGeneratingState(false); toastr.info('Stopped'); return; }
     
     const textarea = document.getElementById('send_textarea'); 
     let text = textarea ? textarea.value.trim() : '';
     
-    // Reply mode works with or without text. Spell/Mood need text.
     if (!text && mode !== 'reply') { toastr.warning('No text to process'); return; }
     
     undoBuffer = text; updateUndoButtonState();
@@ -495,7 +494,6 @@ async function processAI(mode, customPrompt = null) {
 
     const seed = parseInt(s[`${p}Seed`]);
     if (seed !== -1) params.seed = seed;
-
     if(s[`${p}TopK`] > 0) params.top_k = parseInt(s[`${p}TopK`]);
     if(s[`${p}RepPen`] !== 1) params.repetition_penalty = parseFloat(s[`${p}RepPen`]);
     if(s[`${p}MinP`] > 0) params.min_p = parseFloat(s[`${p}MinP`]);
@@ -503,84 +501,72 @@ async function processAI(mode, customPrompt = null) {
 
     if (!key) { toastr.error(`API Key Missing for ${p.toUpperCase()}`); return; }
 
-    let sys = '';
-    if (mode === 'spell') sys = s.spellPrompt;
-    else if (mode === 'reply') sys = s.replyPrompt;
+    // 1. Prepare the Core Instruction (System Role 1)
+    let mainInstruction = '';
+    if (mode === 'spell') mainInstruction = s.spellPrompt;
+    else if (mode === 'reply') mainInstruction = s.replyPrompt;
     else if (mode === 'mood') {
         const universal = s.moodUniversalPrompt ? s.moodUniversalPrompt.trim() + '\n' : '';
-        sys = universal + customPrompt;
+        mainInstruction = universal + customPrompt;
     }
 
+    // Add Persona Info to Instruction if available
     const userName = typeof name2 !== 'undefined' ? name2 : 'User';
     let persona = '';
     if (typeof power_user !== 'undefined' && power_user.persona_description) {
         persona = power_user.persona_description;
     }
-    
     if (persona) {
-        sys += `\n\n### User Information\nName: ${userName}\nPersona: ${persona}\n`;
+        mainInstruction += `\n\n### User Persona Information\nName: ${userName}\nPersona: ${persona}\n`;
     }
+    mainInstruction = mainInstruction.replace(/{{user}}/g, userName);
 
-    sys = sys.replace(/{{user}}/g, userName);
+    // 2. Prepare the Context Block (System Role 2)
+    const context = getContext(); 
+    const limit = parseInt(s[`${p}Context`]);
+    let contextMessageContent = "";
+
+    if (limit > 0 && context.chat && context.chat.length) {
+        // Collect history
+        const historySlice = context.chat.slice(-limit);
+        const historyBlock = historySlice.map(msg => 
+            `${msg.is_user ? 'User' : 'Character'}: ${msg.mes}`
+        ).join('\n\n');
+        
+        contextMessageContent = `### REFERENCE CONTEXT (Background Information Only):\n${historyBlock}`;
+    }
 
     renderGeneratingState(true); isGenerating = true; abortController = new AbortController();
 
     try {
-        const context = getContext(); 
-        const limit = parseInt(s[`${p}Context`]);
         let messages = [];
 
-        // --- NEW LOGIC FOR BOTH SPELLCHECK AND AUTO-REPLY ---
-        // To stop the AI from 'becoming' the character, we feed the history as a 
-        // PASSIVE BLOCK inside the System Prompt for both modes.
+        // --- CONSTRUCT THE MESSAGE ARRAY ---
         
-        if (mode === 'spell' || mode === 'reply') {
-            let historyBlock = "";
-            if (limit > 0 && context.chat && context.chat.length) {
-                // Formatting the history to be very clear to the AI who is who
-                const historySlice = context.chat.slice(-limit);
-                historyBlock = historySlice.map(msg => `${msg.is_user ? 'User' : 'Character'}: ${msg.mes}`).join('\n\n');
-            }
-            
-            // Add history to system prompt as context data
-            if (historyBlock) {
-                sys += `\n\n### CHAT HISTORY (For Context Only - Do not roleplay as Character):\n${historyBlock}\n`;
-            }
+        // Message 1: The Boss (Instructions)
+        messages.push({ role: "system", content: mainInstruction });
 
-            // Specific instruction based on mode
-            if (mode === 'spell') {
-                const taggedText = `<target_text>\n${text}\n</target_text>`;
-                messages = [{ role: "system", content: sys }, { role: "user", content: taggedText }];
-            } 
-            else if (mode === 'reply') {
-                // Explicitly tell it to write for the USER based on the context block
-                sys += `\n### INSTRUCTION:\nYou are a ghostwriter. Read the Chat History above. Write the next logical response for the User (${userName}). Write ONLY the User's response.`;
-                
-                if (text) {
-                     // If there's partial text, ask to complete it
-                    messages = [
-                        { role: "system", content: sys },
-                        { role: "user", content: `(OOC: Finish this thought for me, fitting the context):\n${text}` }
-                    ];
-                } else {
-                    // If empty, ask for a fresh response
-                    messages = [
-                        { role: "system", content: sys },
-                        { role: "user", content: `(OOC: Write the next response for ${userName} now.)` }
-                    ];
-                }
+        // Message 2: The Data (Context) - Only if context exists
+        // We send this as 'system' so it's treated as instruction/fact, not conversation.
+        if (contextMessageContent) {
+            messages.push({ role: "system", content: contextMessageContent });
+        }
+
+        // Message 3: The Trigger (User)
+        if (mode === 'spell') {
+            const taggedText = `<target_text>\n${text}\n</target_text>`;
+            messages.push({ role: "user", content: taggedText });
+        } 
+        else if (mode === 'reply') {
+            // For reply, we give a nudge instruction in the user slot
+            if (text) {
+                messages.push({ role: "user", content: `(OOC: Finish this thought for me, fitting the context):\n${text}` });
+            } else {
+                messages.push({ role: "user", content: `(OOC: Write the next response for ${userName} now based on the context.)` });
             }
-        
-        // --- MOOD MODE (Transformation) ---
-        // Mood mode is simple text transformation, so standard logic is usually fine,
-        // but let's stick to the safe method since it works.
-        } else {
-             // Standard Logic Fallback (if any)
-            const history = [];
-            if (limit > 0 && context.chat && context.chat.length) {
-                context.chat.slice(-limit).forEach(msg => history.push({ role: msg.is_user ? 'user' : 'assistant', content: msg.mes }));
-            }
-            messages = [{ role: "system", content: sys }, ...history];
+        } 
+        else {
+            // Mood / Default
             if (text) messages.push({ role: "user", content: text });
         }
 
@@ -601,7 +587,6 @@ async function processAI(mode, customPrompt = null) {
 
         if (params.stream) {
             if (mode !== 'reply' || !text) textarea.value = ''; 
-            
             const reader = response.body.getReader(); const decoder = new TextDecoder();
             while (true) {
                 const { done, value } = await reader.read(); if (done) break;
@@ -611,11 +596,8 @@ async function processAI(mode, customPrompt = null) {
         } else { 
             const data = await response.json(); 
             if (data.choices[0]?.message?.content) {
-                if (mode === 'reply' && text) {
-                    textarea.value += data.choices[0].message.content; // Append
-                } else {
-                    textarea.value = data.choices[0].message.content; // Replace
-                }
+                if (mode === 'reply' && text) textarea.value += data.choices[0].message.content;
+                else textarea.value = data.choices[0].message.content;
             }
         }
         textarea.dispatchEvent(new Event('input', { bubbles: true }));
