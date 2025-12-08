@@ -1,22 +1,27 @@
-/* --- BASE CONTAINER (Shared Foundation) --- */
+/* --- BASE CONTAINER (The Glass Look) --- */
+/* This applies to EVERYTHING: Main Bar, Grid, Floating, Docked */
 .quick-format-container {
     position: fixed !important; 
     display: flex !important; /* Default to Flex */
     justify-content: center; 
-    align-items: center; /* Center items vertically */
+    align-items: center; 
     gap: 5px;
     z-index: 2000; 
+    
+    /* WIDTH SETTINGS */
     width: max-content !important; 
     max-width: 98vw !important;
+    
+    /* INTERACTION */
     touch-action: none; 
     pointer-events: auto !important;
     
-    /* THE UNIFIED "SEXY" LOOK */
-    background: rgba(20, 20, 25, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    /* THE UNIFIED STYLE (Dark Glass) */
+    background: rgba(20, 20, 25, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 8px !important;
+    padding: 6px !important;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5) !important;
 }
 
 .quick-format-container.editing {
@@ -25,36 +30,32 @@
     cursor: move !important;
 }
 
-/* --- GROUP WIDGET SPECIFICS --- */
-.qf-group-container {
-    /* Uses base container styles, just forcing width reset for grid */
-    width: auto !important; 
-}
-
 /* --- LAYOUT OVERRIDES --- */
 
-/* 1. Flat Line Layout (Explicitly enforces Flex row) */
+/* 1. Flat Line Layout */
 .quick-format-container.qf-layout-flat {
     display: flex !important;
     flex-direction: row;
 }
 
-/* 2. Grid Layout (Explicitly overrides Flex with Grid) */
+/* 2. Grid Layout (Forces 2x2) */
 .quick-format-container.qf-layout-grid {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
     align-items: center;
     justify-items: center;
+    /* Grid needs to reset width to fit content */
+    width: auto !important; 
 }
 
-/* --- BUTTON STYLING (UNIFIED) --- */
+/* --- BUTTON STYLING --- */
 .quick-format-btn {
     display: flex; 
     align-items: center; 
     justify-content: center;
-    min-width: 32px; /* Standard text buttons width */
-    height: 32px;    /* Standard text buttons height */
+    min-width: 32px; 
+    height: 32px;    
     padding: 0 10px;
     font-size: 14px; 
     cursor: pointer; 
@@ -62,7 +63,7 @@
     touch-action: manipulation; 
     user-select: none;
     
-    /* Unified Button Look */
+    /* Glass Button Style */
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.05);
     color: white; 
@@ -74,7 +75,7 @@
     background: rgba(255,255,255,0.2); 
 }
 
-/* Bigger Icon Buttons (Brain, Reply, Tools) override size */
+/* Bigger Icon Buttons (Grid Items) */
 .qf-group-container .quick-format-btn, 
 .qf-mood-container .quick-format-btn, 
 .qf-reply-container .quick-format-btn,
@@ -99,16 +100,24 @@
 }
 .qf-lock-btn:hover { background: #ff0000; transform: scale(1.1); }
 
-/* --- LEGACY STYLE OVERRIDES --- */
-/* We override these to ensure the new background applies even if 'Docked' is selected */
-.style-docked, .style-floating { 
-    background-color: rgba(20, 20, 25, 0.95); 
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px;
+/* --- CLEANING UP LEGACY STYLES --- */
+/* 
+   We removed the specific 'background: transparent' rules.
+   Now these classes only handle any residual structural tweaks 
+   if SillyTavern tries to enforce them, but our !important 
+   rules above should handle the look.
+*/
+.style-docked { 
+    border-bottom: 0; 
+    border-radius: 8px 8px 0 0 !important; /* Slight tweak for docking */
 }
 
-/* --- DROPDOWN MENUS --- */
+.style-floating { 
+    /* No transparency here anymore! It inherits from base. */
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+/* --- MENUS & SLIDERS --- */
 #qf-mood-dropdown {
     background: #1a1b1e; 
     border: 1px solid #454545; 
@@ -127,7 +136,6 @@
 }
 .qf-dropdown-item:hover { background: rgba(255,255,255,0.1); }
 
-/* --- SETTINGS INPUTS --- */
 .qf-setting-row input[type="range"] {
     -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
     background: rgba(255, 255, 255, 0.2); border-radius: 3px; outline: none;
