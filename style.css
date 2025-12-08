@@ -1,15 +1,22 @@
-/* --- BASE CONTAINER (The Foundation) --- */
+/* --- BASE CONTAINER (Shared Foundation) --- */
 .quick-format-container {
     position: fixed !important; 
     display: flex !important; /* Default to Flex */
     justify-content: center; 
-    align-items: flex-end; 
+    align-items: center; /* Center items vertically */
     gap: 5px;
     z-index: 2000; 
     width: max-content !important; 
     max-width: 98vw !important;
     touch-action: none; 
     pointer-events: auto !important;
+    
+    /* THE UNIFIED "SEXY" LOOK */
+    background: rgba(20, 20, 25, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 .quick-format-container.editing {
@@ -18,25 +25,18 @@
     cursor: move !important;
 }
 
-/* --- GROUP CONTAINER STYLING --- */
+/* --- GROUP WIDGET SPECIFICS --- */
 .qf-group-container {
-    background: rgba(20, 20, 25, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 6px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    /* Important: reset width for the grid to shrink-wrap */
+    /* Uses base container styles, just forcing width reset for grid */
     width: auto !important; 
-    gap: 5px;
 }
 
-/* --- LAYOUT OVERRIDES (The Fix) --- */
+/* --- LAYOUT OVERRIDES --- */
 
 /* 1. Flat Line Layout (Explicitly enforces Flex row) */
 .quick-format-container.qf-layout-flat {
     display: flex !important;
     flex-direction: row;
-    align-items: center;
 }
 
 /* 2. Grid Layout (Explicitly overrides Flex with Grid) */
@@ -44,27 +44,47 @@
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: auto auto;
-    gap: 5px;
     align-items: center;
     justify-items: center;
 }
 
-/* Ensure buttons in the group look uniform */
-.qf-group-container .quick-format-btn {
-    width: 40px; 
-    height: 40px;
+/* --- BUTTON STYLING (UNIFIED) --- */
+.quick-format-btn {
+    display: flex; 
+    align-items: center; 
+    justify-content: center;
+    min-width: 32px; /* Standard text buttons width */
+    height: 32px;    /* Standard text buttons height */
+    padding: 0 10px;
+    font-size: 14px; 
+    cursor: pointer; 
+    font-family: monospace;
+    touch-action: manipulation; 
+    user-select: none;
+    
+    /* Unified Button Look */
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.05);
+    color: white; 
+    border-radius: 4px;
     margin: 0 !important;
 }
 
-.qf-group-container .quick-format-btn:hover {
-    background: rgba(255,255,255,0.2);
+.quick-format-btn:hover { 
+    background: rgba(255,255,255,0.2); 
 }
 
-/* --- REST OF THE STYLES (Unchanged) --- */
+/* Bigger Icon Buttons (Brain, Reply, Tools) override size */
+.qf-group-container .quick-format-btn, 
+.qf-mood-container .quick-format-btn, 
+.qf-reply-container .quick-format-btn,
+.qf-tools-container .quick-format-btn {
+    width: 40px; 
+    height: 40px;
+    font-size: 18px;
+}
 
-/* Lock Button */
+/* --- LOCK BUTTON --- */
 .qf-lock-btn {
     position: absolute; top: -10px; right: -10px;
     width: 24px; height: 24px;
@@ -79,49 +99,35 @@
 }
 .qf-lock-btn:hover { background: #ff0000; transform: scale(1.1); }
 
-/* Standard Button */
-.quick-format-btn {
-    display: flex; align-items: center; justify-content: center;
-    min-width: 32px; height: 32px; padding: 0 10px;
-    font-size: 14px; cursor: pointer; font-family: monospace;
-    touch-action: manipulation; user-select: none;
-    border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5);
-    color: white; border-radius: 4px;
-}
-.quick-format-btn:hover { background: rgba(255,255,255,0.1); }
-
-/* Styles */
-.style-docked { background-color: #1a1b1e; border: 1px solid #454545; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 4px 10px 2px 10px; }
-.style-floating { background: transparent; padding: 4px; border: none; }
-
-/* Individual Icon Containers (When not in group) */
-.qf-mood-container .quick-format-btn, .qf-reply-container .quick-format-btn {
-    width: 45px; height: 45px; border-radius: 4px; 
-    background: rgba(20, 20, 25, 0.9); border: 1px solid rgba(255,255,255,0.2); 
-    font-size: 18px; color: white;
-}
-.qf-mood-container .quick-format-btn:hover, .qf-reply-container .quick-format-btn:hover {
-    border-color: rgba(255,255,255,0.5); background: rgba(50, 50, 55, 0.9);
+/* --- LEGACY STYLE OVERRIDES --- */
+/* We override these to ensure the new background applies even if 'Docked' is selected */
+.style-docked, .style-floating { 
+    background-color: rgba(20, 20, 25, 0.95); 
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 6px;
 }
 
-/* Tools Container (Wand + Undo) */
-.qf-tools-container {
-    background: rgba(20, 20, 25, 0.9); border: 1px solid rgba(255,255,255,0.2); 
-    border-radius: 8px; padding: 4px;
-}
-.qf-tools-container .quick-format-btn { background: transparent; border: none; }
-.qf-tools-container .quick-format-btn:hover { background: rgba(255,255,255,0.1); }
-
-/* Mood Dropdown */
+/* --- DROPDOWN MENUS --- */
 #qf-mood-dropdown {
-    background: #1a1b1e; border: 1px solid #454545; border-radius: 8px;
-    padding: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    min-width: 120px; display: flex; flex-direction: column; gap: 2px;
+    background: #1a1b1e; 
+    border: 1px solid #454545; 
+    border-radius: 8px;
+    padding: 5px; 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    min-width: 120px; 
+    display: flex; flex-direction: column; gap: 2px;
 }
-.qf-dropdown-item { padding: 8px 12px; cursor: pointer; border-radius: 4px; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.qf-dropdown-item { 
+    padding: 8px 12px; 
+    cursor: pointer; 
+    border-radius: 4px; 
+    display: flex; align-items: center; gap: 8px; 
+    font-size: 14px; 
+}
 .qf-dropdown-item:hover { background: rgba(255,255,255,0.1); }
 
-/* --- SETTINGS --- */
+/* --- SETTINGS INPUTS --- */
 .qf-setting-row input[type="range"] {
     -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
     background: rgba(255, 255, 255, 0.2); border-radius: 3px; outline: none;
