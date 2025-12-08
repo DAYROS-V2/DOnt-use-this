@@ -41,7 +41,7 @@ const defaultSettings = {
     // --- 3. MOOD SETTINGS ---
     moodProvider: 'openrouter', moodBase: 'https://openrouter.ai/api/v1', moodKeyOR: '', moodKeyOA: '', moodModel: '',
     moodStream: true, moodContext: 5, moodTokens: 0,
-    moodTemp: 1.2, moodFreqPen: 0.0, moodPresPen: 0.0, moodRepPen: 1.0,
+    moodTemp: 0.8, moodFreqPen: 0.0, moodPresPen: 0.0, moodRepPen: 1.0,
     moodTopK: 0, moodTopP: 1.0, moodMinP: 0.0, moodTopA: 0.0, moodSeed: -1,
     moodUniversalPrompt: 'You will edit the text sent to match the tone provided:',
 
@@ -50,7 +50,7 @@ const defaultSettings = {
     replyStream: true, replyContext: 10, replyTokens: 200,
     replyTemp: 0.8, replyFreqPen: 0.5, replyPresPen: 0.0, replyRepPen: 1.1,
     replyTopK: 40, replyTopP: 0.9, replyMinP: 0.0, replyTopA: 0.0, replySeed: -1,
-    replyPrompt: 'You are a ghostwriter for a Roleplay. Write the next logical response for the User persona based on the Chat History.',
+    replyPrompt: 'You are an expert Ghostwriter for a Roleplay. Write the next response for the User. STRICT FORMATTING: Use asterisks (*) for actions and double quotes (") for dialogue.',
 
     // Mood List
     moods: [
@@ -148,29 +148,26 @@ function syncSettingsToUI() {
     else { $('#qf_section_global_api').hide(); $('.qf-specific-api').show(); }
 
     ['global', 'spell', 'mood', 'reply'].forEach(p => {
-        $(`#qf_${p}_provider`).val(s[`${p}Provider`]);
-        $(`#qf_${p}_base`).val(s[`${p}Base`]);
-        const isOA = s[`${p}Provider`] === 'openai';
-        $(`#qf_${p}_key`).val(isOA ? s[`${p}KeyOA`] : s[`${p}KeyOR`]);
-        $(`#qf_${p}_stream`).prop('checked', s[`${p}Stream`]);
-        $(`#qf_${p}_context`).val(s[`${p}Context`]);
-        $(`#qf_${p}_tokens`).val(s[`${p}Tokens`]);
-        $(`#qf_${p}_seed`).val(s[`${p}Seed`]);
-        $(`#qf_${p}_temp`).val(s[`${p}Temp`]);
-        $(`#qf_${p}_freq_pen`).val(s[`${p}FreqPen`]);
-        $(`#qf_${p}_pres_pen`).val(s[`${p}PresPen`]);
-        $(`#qf_${p}_rep_pen`).val(s[`${p}RepPen`]);
-        $(`#qf_${p}_top_k`).val(s[`${p}TopK`]);
-        $(`#qf_${p}_top_p`).val(s[`${p}TopP`]);
-        $(`#qf_${p}_min_p`).val(s[`${p}MinP`]);
-        $(`#qf_${p}_top_a`).val(s[`${p}TopA`]);
-
-        const modelSel = $(`#qf_${p}_model`);
-        const savedModel = s[`${p}Model`];
-        if (savedModel && modelSel.find(`option[value="${savedModel}"]`).length === 0) {
-            modelSel.append(new Option(savedModel, savedModel, true, true));
-        }
-        modelSel.val(savedModel);
+        $(`#qf_${p}_provider`).on('change', function() { updateSetting(`${p}Provider`, $(this).val()); syncSettingsToUI(); });
+        $(`#qf_${p}_base`).on('change', function() { updateSetting(`${p}Base`, $(this).val()); });
+        $(`#qf_${p}_key`).on('change', function() {
+            const provider = extension_settings[extensionName][`${p}Provider`];
+            if(provider === 'openai') updateSetting(`${p}KeyOA`, $(this).val()); else updateSetting(`${p}KeyOR`, $(this).val());
+        });
+        $(`#qf_${p}_model`).on('change', function() { updateSetting(`${p}Model`, $(this).val()); });
+        $(`#qf_${p}_fetch`).on('click', (e) => { e.preventDefault(); fetchModels(p); });
+        $(`#qf_${p}_stream`).on('change', function() { updateSetting(`${p}Stream`, $(this).prop('checked')); });
+        $(`#qf_${p}_context`).on('change', function() { updateSetting(`${p}Context`, parseInt($(this).val())); });
+        $(`#qf_${p}_tokens`).on('change', function() { updateSetting(`${p}Tokens`, parseInt($(this).val())); });
+        $(`#qf_${p}_seed`).on('change', function() { updateSetting(`${p}Seed`, parseInt($(this).val())); });
+        $(`#qf_${p}_temp`).on('change', function() { updateSetting(`${p}Temp`, parseFloat($(this).val())); });
+        $(`#qf_${p}_freq_pen`).on('change', function() { updateSetting(`${p}FreqPen`, parseFloat($(this).val())); });
+        $(`#qf_${p}_pres_pen`).on('change', function() { updateSetting(`${p}PresPen`, parseFloat($(this).val())); });
+        $(`#qf_${p}_rep_pen`).on('change', function() { updateSetting(`${p}RepPen`, parseFloat($(this).val())); });
+        $(`#qf_${p}_top_k`).on('change', function() { updateSetting(`${p}TopK`, parseInt($(this).val())); });
+        $(`#qf_${p}_top_p`).on('change', function() { updateSetting(`${p}TopP`, parseFloat($(this).val())); });
+        $(`#qf_${p}_min_p`).on('change', function() { updateSetting(`${p}MinP`, parseFloat($(this).val())); });
+        $(`#qf_${p}_top_a`).on('change', function() { updateSetting(`${p}TopA`, parseFloat($(this).val())); });
     });
 
     $('#qf_buttons_list').empty();
@@ -446,20 +443,51 @@ function toggleMoodDropdown() {
     const s = extension_settings[extensionName];
     if (!s.moods || !s.moods.length) { toastr.info('No moods configured.'); return; }
     
-    let rect;
-    if (s.groupedWidgets && quadContainer) rect = quadContainer.getBoundingClientRect();
-    else if (moodContainer) rect = moodContainer.getBoundingClientRect();
-    else return;
+    let target = null;
+    if (s.groupedWidgets && quadContainer) target = $(quadContainer);
+    else if (moodContainer) target = $(moodContainer);
+    
+    if (!target) return;
 
     const dropdown = $(`<div id="qf-mood-dropdown"></div>`);
     s.moods.forEach(mood => {
         const item = $(`<div class="qf-dropdown-item"><i class="fa-solid ${mood.icon}"></i> ${mood.label}</div>`);
-        item.on('click', () => { processAI('mood', mood.prompt); dropdown.remove(); });
+        item.on('click', (e) => { 
+            e.stopPropagation();
+            processAI('mood', mood.prompt); 
+            dropdown.remove(); 
+        });
         dropdown.append(item);
     });
-    $('body').append(dropdown);
-    dropdown.css({ position: 'fixed', left: rect.left + 'px', bottom: (window.innerHeight - rect.top + 5) + 'px', zIndex: 2005, transform: 'translateX(-50%)' });
-    setTimeout(() => { $(document).on('click.qfClose', (e) => { if (!$(e.target).closest('#qf-mood-dropdown, .qf-mood-container, .qf-group-container').length) { dropdown.remove(); $(document).off('click.qfClose'); } }); }, 100);
+
+    target.append(dropdown);
+    
+    dropdown.css({ 
+        position: 'absolute', 
+        bottom: '100%', 
+        left: '50%', 
+        transform: 'translateX(-50%)', 
+        marginBottom: '10px',
+        zIndex: 2005, 
+        width: 'max-content',
+        minWidth: '120px',
+        background: 'var(--smart-theme-bg)',
+        border: '1px solid var(--smart-theme-border)',
+        borderRadius: '10px',
+        boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden'
+    });
+
+    setTimeout(() => { 
+        $(document).on('click.qfClose', (e) => { 
+            if (!$(e.target).closest('#qf-mood-dropdown, .qf-group-container, .qf-mood-container').length) { 
+                dropdown.remove(); 
+                $(document).off('click.qfClose'); 
+            } 
+        }); 
+    }, 100);
 }
 
 // --- AI LOGIC (UPDATED WITH ROLE SEPARATION) ---
