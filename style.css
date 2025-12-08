@@ -1,49 +1,68 @@
-l/* --- GROUP CONTAINERS --- */
+/* --- BASE CONTAINER (The Foundation) --- */
+.quick-format-container {
+    position: fixed !important; 
+    display: flex !important; /* Default to Flex */
+    justify-content: center; 
+    align-items: flex-end; 
+    gap: 5px;
+    z-index: 2000; 
+    width: max-content !important; 
+    max-width: 98vw !important;
+    touch-action: none; 
+    pointer-events: auto !important;
+}
+
+.quick-format-container.editing {
+    z-index: 2147483647 !important; 
+    filter: drop-shadow(0 0 5px white); 
+    cursor: move !important;
+}
+
+/* --- GROUP CONTAINER STYLING --- */
 .qf-group-container {
     background: rgba(20, 20, 25, 0.95);
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 8px;
     padding: 6px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    width: auto !important;
+    /* Important: reset width for the grid to shrink-wrap */
+    width: auto !important; 
     gap: 5px;
 }
 
-/* 2x2 Grid Layout */
-.qf-layout-grid {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto;
-}
+/* --- LAYOUT OVERRIDES (The Fix) --- */
 
-/* Flat Line Layout */
-.qf-layout-flat {
+/* 1. Flat Line Layout (Explicitly enforces Flex row) */
+.quick-format-container.qf-layout-flat {
     display: flex !important;
     flex-direction: row;
     align-items: center;
 }
 
-/* Uniform styling for buttons inside the group */
+/* 2. Grid Layout (Explicitly overrides Flex with Grid) */
+.quick-format-container.qf-layout-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 5px;
+    align-items: center;
+    justify-items: center;
+}
+
+/* Ensure buttons in the group look uniform */
 .qf-group-container .quick-format-btn {
-    width: 40px; height: 40px;
+    width: 40px; 
+    height: 40px;
     border: 1px solid rgba(255,255,255,0.1);
     background: rgba(255,255,255,0.05);
     margin: 0 !important;
 }
+
 .qf-group-container .quick-format-btn:hover {
     background: rgba(255,255,255,0.2);
 }
 
-/* --- EXISTING STYLES --- */
-.quick-format-container {
-    position: fixed !important; display: flex !important;
-    justify-content: center; align-items: flex-end; gap: 5px;
-    z-index: 2000; width: max-content !important; max-width: 98vw !important;
-    touch-action: none; pointer-events: auto !important;
-}
-.quick-format-container.editing {
-    z-index: 2147483647 !important; filter: drop-shadow(0 0 5px white); cursor: move !important;
-}
+/* --- REST OF THE STYLES (Unchanged) --- */
 
 /* Lock Button */
 .qf-lock-btn {
@@ -71,12 +90,11 @@ l/* --- GROUP CONTAINERS --- */
 }
 .quick-format-btn:hover { background: rgba(255,255,255,0.1); }
 
-/* Layouts */
+/* Styles */
 .style-docked { background-color: #1a1b1e; border: 1px solid #454545; border-bottom: 0; border-radius: 10px 10px 0 0; padding: 4px 10px 2px 10px; }
 .style-floating { background: transparent; padding: 4px; border: none; }
 
-/* Individual Icon Containers */
-/* Single Button Containers (Brain/Comment) */
+/* Individual Icon Containers (When not in group) */
 .qf-mood-container .quick-format-btn, .qf-reply-container .quick-format-btn {
     width: 45px; height: 45px; border-radius: 4px; 
     background: rgba(20, 20, 25, 0.9); border: 1px solid rgba(255,255,255,0.2); 
