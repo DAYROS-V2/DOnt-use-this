@@ -53,7 +53,6 @@
                             <span><b>Group Widgets</b></span>
                         </div>
                         
-                        <!-- THE NEW DROPDOWN (Hidden by default) -->
                         <div id="qf_group_layout_wrapper" style="margin-left: 25px; margin-top: 5px; display: none;">
                             <label style="font-size: 0.9em; opacity: 0.8;">Layout Style:</label>
                             <select id="qf_group_layout" class="text_pole" style="width: 120px;">
@@ -174,6 +173,12 @@
                     </div>
                 </div>
             </details>
+
+            <!-- 5. UNIVERSAL PERSONA (NEW MANUAL SETTING) -->
+            <div class="qf-setting-row" style="margin-top: 15px; border-top: 1px solid #555; padding-top: 10px;">
+                <label>🆔 Universal Persona (Manual Paste)</label>
+                <textarea id="qf_custom_persona" class="text_pole" rows="4" placeholder="Paste your Persona here. This will replace {{persona}} in prompts."></textarea>
+            </div>
 
             <button id="qf_reset_pos" class="menu_button" style="margin-top: 10px;">Reset All Positions</button>
         </div>

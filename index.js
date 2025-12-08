@@ -12,10 +12,10 @@ const defaultSettings = {
     
     // --- LAYOUT SETTINGS ---
     groupedWidgets: false, 
-    groupLayout: 'flat', // 'flat' (1x4) or 'grid' (2x2)
+    groupLayout: 'flat', 
     quadX: '10%', quadY: '200px', 
 
-    // --- POSITIONS (Individual) ---
+    // --- POSITIONS ---
     moodBtnEnabled: true, moodX: '85%', moodY: '0px',
     replyBtnEnabled: true, replyX: '15%', replyY: '0px',
     toolsBtnEnabled: true, 
@@ -31,26 +31,29 @@ const defaultSettings = {
     globalTemp: 1.0, globalFreqPen: 0.0, globalPresPen: 0.0, globalRepPen: 1.0,
     globalTopK: 0, globalTopP: 1.0, globalMinP: 0.0, globalTopA: 0.0, globalSeed: -1,
 
-    // --- 2. SPELLCHECKER SETTINGS ---
+    // --- 2. SPELLCHECKER ---
     spellProvider: 'openrouter', spellBase: 'https://openrouter.ai/api/v1', spellKeyOR: '', spellKeyOA: '', spellModel: '', 
     spellStream: true, spellContext: 5, spellTokens: 0,
     spellTemp: 0.2, spellFreqPen: 0.0, spellPresPen: 0.0, spellRepPen: 1.0,
     spellTopK: 0, spellTopP: 1.0, spellMinP: 0.0, spellTopA: 0.0, spellSeed: -1,
     spellPrompt: 'You are a text processing engine. Your ONLY task is to correct grammar and spelling in the user\'s input inside <target_text> tags. Return ONLY the corrected string.',
 
-    // --- 3. MOOD SETTINGS ---
+    // --- 3. MOOD ---
     moodProvider: 'openrouter', moodBase: 'https://openrouter.ai/api/v1', moodKeyOR: '', moodKeyOA: '', moodModel: '',
     moodStream: true, moodContext: 5, moodTokens: 0,
     moodTemp: 0.8, moodFreqPen: 0.0, moodPresPen: 0.0, moodRepPen: 1.0,
     moodTopK: 0, moodTopP: 1.0, moodMinP: 0.0, moodTopA: 0.0, moodSeed: -1,
     moodUniversalPrompt: 'You will edit the text sent to match the tone provided:',
 
-    // --- 4. AUTO-REPLY SETTINGS ---
+    // --- 4. AUTO-REPLY ---
     replyProvider: 'openrouter', replyBase: 'https://openrouter.ai/api/v1', replyKeyOR: '', replyKeyOA: '', replyModel: '',
     replyStream: true, replyContext: 10, replyTokens: 200,
     replyTemp: 0.8, replyFreqPen: 0.5, replyPresPen: 0.0, replyRepPen: 1.1,
     replyTopK: 40, replyTopP: 0.9, replyMinP: 0.0, replyTopA: 0.0, replySeed: -1,
-    replyPrompt: 'You are an expert Ghostwriter for a Roleplay. Write the next response for the User. STRICT FORMATTING: Use asterisks (*) for actions and double quotes (") for dialogue.',
+    replyPrompt: 'You are an expert Ghostwriter for a Roleplay. Write the next response for {{user}}. Persona: {{persona}}. STRICT FORMATTING: Use asterisks (*) for actions and double quotes (") for dialogue.',
+
+    // --- 5. UNIVERSAL PERSONA (MANUAL) ---
+    customPersona: '', 
 
     // Mood List
     moods: [
@@ -73,7 +76,7 @@ let moodContainer = null;
 let replyContainer = null;
 let spellContainer = null; 
 let undoContainer = null; 
-let quadContainer = null; // The Group Container
+let quadContainer = null; 
 
 let isEditing = false;
 let isGenerating = false;
@@ -113,11 +116,10 @@ function loadSettings() {
 function updateSetting(key, value) {
     extension_settings[extensionName][key] = value;
     saveSettingsDebounced();
-    // Re-render if layout changes
     if (['mobileStyle', 'enabled', 'moodBtnEnabled', 'replyBtnEnabled', 'toolsBtnEnabled', 'useGlobalApi', 'groupedWidgets', 'groupLayout'].includes(key)) {
         renderUI(true);
         if (key === 'useGlobalApi') syncSettingsToUI();
-        if (key === 'groupedWidgets') syncSettingsToUI(); // To toggle dropdown visibility
+        if (key === 'groupedWidgets') syncSettingsToUI();
     } else {
         updateContainerStyles();
     }
@@ -132,42 +134,40 @@ function syncSettingsToUI() {
     $('#qf_mood_enabled').prop('checked', s.moodBtnEnabled);
     $('#qf_reply_enabled').prop('checked', s.replyBtnEnabled);
     $('#qf_tools_enabled').prop('checked', s.toolsBtnEnabled);
-    
-    // NEW LOGIC
     $('#qf_grouped_widgets').prop('checked', s.groupedWidgets);
     $('#qf_group_layout').val(s.groupLayout);
     
-    // Show/Hide dropdown based on checkbox
-    if(s.groupedWidgets) {
-        $('#qf_group_layout_wrapper').show();
-    } else {
-        $('#qf_group_layout_wrapper').hide();
-    }
-
+    if(s.groupedWidgets) { $('#qf_group_layout_wrapper').show(); } else { $('#qf_group_layout_wrapper').hide(); }
     if (s.useGlobalApi) { $('#qf_section_global_api').show(); $('.qf-specific-api').hide(); } 
     else { $('#qf_section_global_api').hide(); $('.qf-specific-api').show(); }
 
+    // --- SYNC THE NEW PERSONA BOX ---
+    $('#qf_custom_persona').val(s.customPersona || '');
+
     ['global', 'spell', 'mood', 'reply'].forEach(p => {
-        $(`#qf_${p}_provider`).on('change', function() { updateSetting(`${p}Provider`, $(this).val()); syncSettingsToUI(); });
-        $(`#qf_${p}_base`).on('change', function() { updateSetting(`${p}Base`, $(this).val()); });
-        $(`#qf_${p}_key`).on('change', function() {
-            const provider = extension_settings[extensionName][`${p}Provider`];
-            if(provider === 'openai') updateSetting(`${p}KeyOA`, $(this).val()); else updateSetting(`${p}KeyOR`, $(this).val());
-        });
-        $(`#qf_${p}_model`).on('change', function() { updateSetting(`${p}Model`, $(this).val()); });
-        $(`#qf_${p}_fetch`).on('click', (e) => { e.preventDefault(); fetchModels(p); });
-        $(`#qf_${p}_stream`).on('change', function() { updateSetting(`${p}Stream`, $(this).prop('checked')); });
-        $(`#qf_${p}_context`).on('change', function() { updateSetting(`${p}Context`, parseInt($(this).val())); });
-        $(`#qf_${p}_tokens`).on('change', function() { updateSetting(`${p}Tokens`, parseInt($(this).val())); });
-        $(`#qf_${p}_seed`).on('change', function() { updateSetting(`${p}Seed`, parseInt($(this).val())); });
-        $(`#qf_${p}_temp`).on('change', function() { updateSetting(`${p}Temp`, parseFloat($(this).val())); });
-        $(`#qf_${p}_freq_pen`).on('change', function() { updateSetting(`${p}FreqPen`, parseFloat($(this).val())); });
-        $(`#qf_${p}_pres_pen`).on('change', function() { updateSetting(`${p}PresPen`, parseFloat($(this).val())); });
-        $(`#qf_${p}_rep_pen`).on('change', function() { updateSetting(`${p}RepPen`, parseFloat($(this).val())); });
-        $(`#qf_${p}_top_k`).on('change', function() { updateSetting(`${p}TopK`, parseInt($(this).val())); });
-        $(`#qf_${p}_top_p`).on('change', function() { updateSetting(`${p}TopP`, parseFloat($(this).val())); });
-        $(`#qf_${p}_min_p`).on('change', function() { updateSetting(`${p}MinP`, parseFloat($(this).val())); });
-        $(`#qf_${p}_top_a`).on('change', function() { updateSetting(`${p}TopA`, parseFloat($(this).val())); });
+        $(`#qf_${p}_provider`).val(s[`${p}Provider`]);
+        $(`#qf_${p}_base`).val(s[`${p}Base`]);
+        const isOA = s[`${p}Provider`] === 'openai';
+        $(`#qf_${p}_key`).val(isOA ? s[`${p}KeyOA`] : s[`${p}KeyOR`]);
+        $(`#qf_${p}_stream`).prop('checked', s[`${p}Stream`]);
+        $(`#qf_${p}_context`).val(s[`${p}Context`]);
+        $(`#qf_${p}_tokens`).val(s[`${p}Tokens`]);
+        $(`#qf_${p}_seed`).val(s[`${p}Seed`]);
+        $(`#qf_${p}_temp`).val(s[`${p}Temp`]);
+        $(`#qf_${p}_freq_pen`).val(s[`${p}FreqPen`]);
+        $(`#qf_${p}_pres_pen`).val(s[`${p}PresPen`]);
+        $(`#qf_${p}_rep_pen`).val(s[`${p}RepPen`]);
+        $(`#qf_${p}_top_k`).val(s[`${p}TopK`]);
+        $(`#qf_${p}_top_p`).val(s[`${p}TopP`]);
+        $(`#qf_${p}_min_p`).val(s[`${p}MinP`]);
+        $(`#qf_${p}_top_a`).val(s[`${p}TopA`]);
+
+        const modelSel = $(`#qf_${p}_model`);
+        const savedModel = s[`${p}Model`];
+        if (savedModel && modelSel.find(`option[value="${savedModel}"]`).length === 0) {
+            modelSel.append(new Option(savedModel, savedModel, true, true));
+        }
+        modelSel.val(savedModel);
     });
 
     $('#qf_buttons_list').empty();
@@ -187,9 +187,30 @@ function syncSettingsToUI() {
     $('#qf_pos_x').val(parseFloat(s.x)); $('#qf_pos_x_val').text(s.x);
     $('#qf_pos_y').val(parseFloat(s.y)); $('#qf_pos_y_val').text(s.y);
     $('#qf_z_index').val(s.zIndex); $('#qf_z_index_num').val(s.zIndex);
-    $('#qf_ui_scale').val(s.scale);
-    
-    renderMoodSettingsList();
+    $('#qf_z_index_num').on('input', function() { const v = $(this).val(); $('#qf_z_index').val(v); updateSetting('zIndex', v); });
+    $('#qf_ui_scale').on('input', function() { updateSetting('scale', $(this).val()); });
+    $('#qf_reset_pos').on('click', (e) => { 
+        e.preventDefault(); 
+        updateSetting('x', '50%'); updateSetting('y', '0px'); 
+        updateSetting('moodX', '85%'); updateSetting('moodY', '0px'); 
+        updateSetting('replyX', '15%'); updateSetting('replyY', '0px'); 
+        updateSetting('spellX', '15%'); updateSetting('spellY', '50px'); 
+        updateSetting('undoX', '25%'); updateSetting('undoY', '50px');
+        updateSetting('quadX', '10%'); updateSetting('quadY', '200px');
+        renderUI(true); 
+    });
+
+    $('#qf_add_mood_btn').on('click', function(e) {
+        e.preventDefault();
+        const label = $('#qf_new_mood_label').val().trim();
+        const prompt = $('#qf_new_mood_prompt').val().trim();
+        const icon = $('#qf_new_mood_icon').val().trim() || 'fa-star';
+        if(!label || !prompt) { toastr.warning('Label & Prompt required'); return; }
+        s.moods.push({ id: Date.now().toString(), label, icon, prompt });
+        saveSettingsDebounced();
+        $('#qf_new_mood_label').val(''); $('#qf_new_mood_prompt').val('');
+        renderMoodSettingsList(); renderUI();
+    });
 }
 
 function initSettingsListeners() {
@@ -199,8 +220,6 @@ function initSettingsListeners() {
     $('#qf_mood_enabled').on('change', function() { updateSetting('moodBtnEnabled', $(this).prop('checked')); });
     $('#qf_reply_enabled').on('change', function() { updateSetting('replyBtnEnabled', $(this).prop('checked')); });
     $('#qf_tools_enabled').on('change', function() { updateSetting('toolsBtnEnabled', $(this).prop('checked')); });
-    
-    // NEW LISTENERS
     $('#qf_grouped_widgets').on('change', function() { updateSetting('groupedWidgets', $(this).prop('checked')); });
     $('#qf_group_layout').on('change', function() { updateSetting('groupLayout', $(this).val()); });
 
@@ -237,6 +256,12 @@ function initSettingsListeners() {
     $('#qf_spell_prompt').on('change', function() { updateSetting('spellPrompt', $(this).val()); });
     $('#qf_reply_prompt').on('change', function() { updateSetting('replyPrompt', $(this).val()); });
     $('#qf_mood_universal').on('change', function() { updateSetting('moodUniversalPrompt', $(this).val()); });
+    
+    // --- LISTENER FOR THE NEW PERSONA BOX ---
+    $('#qf_custom_persona').on('input', function() { 
+        updateSetting('customPersona', $(this).val()); 
+    });
+
     $('#qf_mobile_style').on('change', function() { updateSetting('mobileStyle', $(this).val()); });
     $('#qf_pos_x').on('input', function() { updateSetting('x', $(this).val() + '%'); });
     $('#qf_pos_y').on('input', function() { updateSetting('y', $(this).val() + 'px'); });
@@ -335,7 +360,6 @@ function updatePosition() {
         el.style.zIndex = isEditing ? '2147483647' : (s.zIndex || 2000);
     };
     
-    // Main Bar
     applyPos(container, 'x', 'y');
 
     if (s.groupedWidgets) {
@@ -362,7 +386,24 @@ function renderUI(force = false) {
     const s = extension_settings[extensionName];
     if (!s.enabled) { if (resizeObserver) resizeObserver.disconnect(); return; }
 
-    // 1. MAIN FORMATTING BAR
+    // --- CUSTOM DOUBLE TAP LOGIC ---
+    const tapThreshold = 250; 
+    let lastTap = 0;
+
+    const addEditTrigger = (el) => {
+        el.addEventListener('click', (e) => {
+            const currentTime = new Date().getTime();
+            const tapLength = currentTime - lastTap;
+            if (tapLength < tapThreshold && tapLength > 0) {
+                e.preventDefault(); 
+                e.stopPropagation(); 
+                toggleEdit(!isEditing);
+            }
+            lastTap = currentTime;
+        });
+        el.removeEventListener('dblclick', toggleEdit); 
+    };
+
     container = document.createElement('div');
     container.className = `quick-format-container style-${s.mobileStyle || 'docked'}`;
     container.dataset.kX = 'x'; container.dataset.kY = 'y';
@@ -370,9 +411,7 @@ function renderUI(force = false) {
     document.body.appendChild(container);
 
     if (s.groupedWidgets) {
-        // GROUPED MODE
         quadContainer = document.createElement('div');
-        // Apply Grid or Flat class based on setting
         const layoutClass = s.groupLayout === 'grid' ? 'qf-layout-grid' : 'qf-layout-flat';
         quadContainer.className = `quick-format-container qf-group-container ${layoutClass}`;
         quadContainer.dataset.kX = 'quadX'; quadContainer.dataset.kY = 'quadY';
@@ -384,9 +423,8 @@ function renderUI(force = false) {
 
         document.body.appendChild(quadContainer);
         addDragListeners(quadContainer);
-        quadContainer.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+        addEditTrigger(quadContainer);
     } else {
-        // SEPARATE MODE
         if (s.moodBtnEnabled) {
             moodContainer = document.createElement('div');
             moodContainer.className = 'quick-format-container style-floating qf-mood-container';
@@ -394,7 +432,7 @@ function renderUI(force = false) {
             moodContainer.appendChild(createBtn({ id: 'btn_mood', icon: '<i class="fa-solid fa-brain"></i>', title: 'Moods', action: toggleMoodDropdown }));
             document.body.appendChild(moodContainer);
             addDragListeners(moodContainer);
-            moodContainer.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+            addEditTrigger(moodContainer);
         }
 
         if (s.replyBtnEnabled) {
@@ -404,7 +442,7 @@ function renderUI(force = false) {
             replyContainer.appendChild(createBtn({ id: 'btn_reply', icon: '<i class="fa-solid fa-comment"></i>', title: 'Auto Reply', action: () => processAI('reply'), isEnhance: true }));
             document.body.appendChild(replyContainer);
             addDragListeners(replyContainer);
-            replyContainer.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+            addEditTrigger(replyContainer);
         }
 
         if (s.toolsBtnEnabled) {
@@ -417,7 +455,7 @@ function renderUI(force = false) {
             }));
             document.body.appendChild(spellContainer);
             addDragListeners(spellContainer);
-            spellContainer.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+            addEditTrigger(spellContainer);
 
             undoContainer = document.createElement('div');
             undoContainer.className = 'quick-format-container style-floating qf-tools-container';
@@ -428,12 +466,12 @@ function renderUI(force = false) {
             }));
             document.body.appendChild(undoContainer);
             addDragListeners(undoContainer);
-            undoContainer.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+            addEditTrigger(undoContainer);
         }
     }
 
     addDragListeners(container);
-    container.addEventListener('dblclick', (e) => { e.preventDefault(); e.stopPropagation(); toggleEdit(!isEditing); });
+    addEditTrigger(container);
     initTracker();
 }
 
@@ -443,6 +481,7 @@ function toggleMoodDropdown() {
     const s = extension_settings[extensionName];
     if (!s.moods || !s.moods.length) { toastr.info('No moods configured.'); return; }
     
+    // TETHER FIX: Find the correct container
     let target = null;
     if (s.groupedWidgets && quadContainer) target = $(quadContainer);
     else if (moodContainer) target = $(moodContainer);
@@ -462,6 +501,7 @@ function toggleMoodDropdown() {
 
     target.append(dropdown);
     
+    // TETHER STYLE
     dropdown.css({ 
         position: 'absolute', 
         bottom: '100%', 
@@ -490,7 +530,7 @@ function toggleMoodDropdown() {
     }, 100);
 }
 
-// --- AI LOGIC (UPDATED WITH ROLE SEPARATION) ---
+// --- AI LOGIC (MANUAL PERSONA) ---
 async function processAI(mode, customPrompt = null) {
     if (isGenerating) { if (abortController) abortController.abort(); isGenerating = false; renderGeneratingState(false); toastr.info('Stopped'); return; }
     
@@ -529,7 +569,7 @@ async function processAI(mode, customPrompt = null) {
 
     if (!key) { toastr.error(`API Key Missing for ${p.toUpperCase()}`); return; }
 
-    // 1. Prepare the Core Instruction (System Role 1)
+    // 1. Prepare Instructions
     let mainInstruction = '';
     if (mode === 'spell') mainInstruction = s.spellPrompt;
     else if (mode === 'reply') mainInstruction = s.replyPrompt;
@@ -538,24 +578,27 @@ async function processAI(mode, customPrompt = null) {
         mainInstruction = universal + customPrompt;
     }
 
-    // Add Persona Info to Instruction if available
-    const userName = typeof name2 !== 'undefined' ? name2 : 'User';
-    let persona = '';
-    if (typeof power_user !== 'undefined' && power_user.persona_description) {
-        persona = power_user.persona_description;
+    // --- ADD THE MANUAL PERSONA ---
+    // If the user pasted something in the box, replace {{persona}} with it!
+    const manualPersona = s.customPersona || "";
+    if (mainInstruction.includes("{{persona}}")) {
+        mainInstruction = mainInstruction.replace("{{persona}}", manualPersona);
+    } else if (manualPersona.length > 0) {
+        // If they didn't put the macro in, append it anyway to be safe
+        mainInstruction += `\n\n### User Persona:\n${manualPersona}`;
     }
-    if (persona) {
-        mainInstruction += `\n\n### User Persona Information\nName: ${userName}\nPersona: ${persona}\n`;
-    }
-    mainInstruction = mainInstruction.replace(/{{user}}/g, userName);
 
-    // 2. Prepare the Context Block (System Role 2)
+    // Also replace {{user}} if we can find it on window, otherwise default to "User"
+    let uName = "User";
+    if (typeof window.name2 !== 'undefined') uName = window.name2;
+    mainInstruction = mainInstruction.replace(/{{user}}/gi, uName);
+
+    // 2. Prepare Context
     const context = getContext(); 
     const limit = parseInt(s[`${p}Context`]);
     let contextMessageContent = "";
 
     if (limit > 0 && context.chat && context.chat.length) {
-        // Collect history
         const historySlice = context.chat.slice(-limit);
         const historyBlock = historySlice.map(msg => 
             `${msg.is_user ? 'User' : 'Character'}: ${msg.mes}`
@@ -569,41 +612,35 @@ async function processAI(mode, customPrompt = null) {
     try {
         let messages = [];
 
-        // --- CONSTRUCT THE MESSAGE ARRAY ---
-        
-        // Message 1: The Boss (Instructions)
+        // System 1: Instructions (now with manual persona)
         messages.push({ role: "system", content: mainInstruction });
 
-        // Message 2: The Data (Context) - Only if context exists
-        // We send this as 'system' so it's treated as instruction/fact, not conversation.
+        // System 2: Context
         if (contextMessageContent) {
             messages.push({ role: "system", content: contextMessageContent });
         }
 
-        // Message 3: The Trigger (User)
+        // User: Trigger
         if (mode === 'spell') {
             const taggedText = `<target_text>\n${text}\n</target_text>`;
             messages.push({ role: "user", content: taggedText });
         } 
         else if (mode === 'reply') {
-            // For reply, we give a nudge instruction in the user slot
             if (text) {
                 messages.push({ role: "user", content: `(OOC: Finish this thought for me, fitting the context):\n${text}` });
             } else {
-                messages.push({ role: "user", content: `(OOC: Write the next response for ${userName} now based on the context.)` });
+                messages.push({ role: "user", content: `(OOC: Write the next response for User now based on the context.)` });
             }
         } 
         else {
-            // Mood / Default
             if (text) messages.push({ role: "user", content: text });
         }
 
         params.messages = messages;
 
-        // --- DEBUG LOGGING ---
+        // DEBUG
         console.log('[QuickFormat] Request URL:', `${base}/chat/completions`);
         console.log('[QuickFormat] Request Payload:', JSON.stringify(params, null, 2));
-        // ---------------------
 
         const response = await fetch(`${base}/chat/completions`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
@@ -636,9 +673,11 @@ async function processAI(mode, customPrompt = null) {
 function createBtn(cfg) {
     const btn = document.createElement('button'); btn.className = 'quick-format-btn';
     if (cfg.isEnhance) btn.classList.add('qf-enhance-btn'); if (cfg.isUndo) btn.classList.add('qf-undo-btn');
-    if(cfg.id) btn.id = cfg.id; // Ensure ID is applied
+    if(cfg.id) btn.id = cfg.id; 
     if (cfg.icon) btn.innerHTML = cfg.icon; else btn.innerText = cfg.label;
-    btn.title = cfg.title; btn.onclick = (e) => { e.preventDefault(); cfg.action ? cfg.action() : insertText(cfg.start, cfg.end); };
+    btn.title = cfg.title; 
+    btn.onclick = (e) => { e.preventDefault(); cfg.action ? cfg.action() : insertText(cfg.start, cfg.end); };
+    btn.ondblclick = (e) => { e.stopPropagation(); }; 
     btn.onmousedown = (e) => e.preventDefault(); return btn;
 }
 
