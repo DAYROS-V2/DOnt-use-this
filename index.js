@@ -50,7 +50,7 @@ const defaultSettings = {
     replyStream: true, replyContext: 10, replyTokens: 200,
     replyTemp: 0.8, replyFreqPen: 0.5, replyPresPen: 0.0, replyRepPen: 1.1,
     replyTopK: 40, replyTopP: 0.9, replyMinP: 0.0, replyTopA: 0.0, replySeed: -1,
-    replyPrompt: 'Write a creative response.',
+    replyPrompt: 'You are a creative ghostwriter for a Roleplay.',
 
     // Mood List
     moods: [
@@ -530,36 +530,52 @@ async function processAI(mode, customPrompt = null) {
         const limit = parseInt(s[`${p}Context`]);
         let messages = [];
 
-        // --- SPELLCHECK MODE (PASSIVE CONTEXT) ---
-        if (mode === 'spell') {
+        // --- NEW LOGIC FOR BOTH SPELLCHECK AND AUTO-REPLY ---
+        // To stop the AI from 'becoming' the character, we feed the history as a 
+        // PASSIVE BLOCK inside the System Prompt for both modes.
+        
+        if (mode === 'spell' || mode === 'reply') {
             let historyBlock = "";
             if (limit > 0 && context.chat && context.chat.length) {
+                // Formatting the history to be very clear to the AI who is who
                 const historySlice = context.chat.slice(-limit);
                 historyBlock = historySlice.map(msg => `${msg.is_user ? 'User' : 'Character'}: ${msg.mes}`).join('\n\n');
             }
-            if (historyBlock) sys += `\n\n### PREVIOUS CONTEXT (FOR TONE MATCHING ONLY):\n${historyBlock}\n`;
             
-            const taggedText = `<target_text>\n${text}\n</target_text>`;
-            messages = [{ role: "system", content: sys }, { role: "user", content: taggedText }];
-        
-        // --- REPLY MODE (CONTINUATION OR GENERATION) ---
-        } else if (mode === 'reply') {
-            // Standard history context
-            const history = [];
-            if (limit > 0 && context.chat && context.chat.length) {
-                context.chat.slice(-limit).forEach(msg => history.push({ role: msg.is_user ? 'user' : 'assistant', content: msg.mes }));
-            }
-            messages = [{ role: "system", content: sys }, ...history];
-            
-            // If there is text in the box, treating it as a start to complete
-            if (text) {
-                messages.push({ role: "user", content: `(OOC: Complete this sentence/paragraph naturally for me, do not repeat it, just finish it):\n${text}` });
-            } else {
-                messages.push({ role: "system", content: "Generate a creative response for the user to send now." });
+            // Add history to system prompt as context data
+            if (historyBlock) {
+                sys += `\n\n### CHAT HISTORY (For Context Only - Do not roleplay as Character):\n${historyBlock}\n`;
             }
 
-        // --- MOOD MODE (TRANSFORMATION) ---
+            // Specific instruction based on mode
+            if (mode === 'spell') {
+                const taggedText = `<target_text>\n${text}\n</target_text>`;
+                messages = [{ role: "system", content: sys }, { role: "user", content: taggedText }];
+            } 
+            else if (mode === 'reply') {
+                // Explicitly tell it to write for the USER based on the context block
+                sys += `\n### INSTRUCTION:\nYou are a ghostwriter. Read the Chat History above. Write the next logical response for the User (${userName}). Write ONLY the User's response.`;
+                
+                if (text) {
+                     // If there's partial text, ask to complete it
+                    messages = [
+                        { role: "system", content: sys },
+                        { role: "user", content: `(OOC: Finish this thought for me, fitting the context):\n${text}` }
+                    ];
+                } else {
+                    // If empty, ask for a fresh response
+                    messages = [
+                        { role: "system", content: sys },
+                        { role: "user", content: `(OOC: Write the next response for ${userName} now.)` }
+                    ];
+                }
+            }
+        
+        // --- MOOD MODE (Transformation) ---
+        // Mood mode is simple text transformation, so standard logic is usually fine,
+        // but let's stick to the safe method since it works.
         } else {
+             // Standard Logic Fallback (if any)
             const history = [];
             if (limit > 0 && context.chat && context.chat.length) {
                 context.chat.slice(-limit).forEach(msg => history.push({ role: msg.is_user ? 'user' : 'assistant', content: msg.mes }));
@@ -570,6 +586,11 @@ async function processAI(mode, customPrompt = null) {
 
         params.messages = messages;
 
+        // --- DEBUG LOGGING ---
+        console.log('[QuickFormat] Request URL:', `${base}/chat/completions`);
+        console.log('[QuickFormat] Request Payload:', JSON.stringify(params, null, 2));
+        // ---------------------
+
         const response = await fetch(`${base}/chat/completions`, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
             body: JSON.stringify(params),
@@ -579,11 +600,6 @@ async function processAI(mode, customPrompt = null) {
         if (!response.ok) throw new Error(`API: ${response.status}`);
 
         if (params.stream) {
-            // Only clear textarea if we are NOT continuing text (Reply with text present)
-            // Actually for smooth streaming we usually clear and append. 
-            // BUT for 'Reply + Text', we want to Append to existing.
-            // For Spellcheck, we Replace.
-            
             if (mode !== 'reply' || !text) textarea.value = ''; 
             
             const reader = response.body.getReader(); const decoder = new TextDecoder();
@@ -652,7 +668,6 @@ function insertText(startTag, endTag) {
 }
 
 function renderGeneratingState(active) { 
-    // FIXED: Target specific buttons to ensure they return to their correct icons
     if (active) {
         $('.qf-enhance-btn').html('<i class="fa-solid fa-square"></i>');
     } else {
@@ -668,8 +683,6 @@ function addDragListeners(el) { el.addEventListener('mousedown',e=>handleDragSta
 function handleDragStart(e, el) { 
     if (!isEditing) return; 
     if (e.target.closest('.qf-lock-btn')) return;
-    e.preventDefault(); e.stopPropagation(); activeDragEl = el; const t = e.touches?e.touches[0]:e; dragStartCoords = {x:t.clientX, y:t.clientY}; const s = extension_settings[extensionName]; dragStartPos={xPct:parseFloat(s[el.dataset.kX])||50, yPx:parseFloat(s[el.dataset.kY])||0, kX:el.dataset.kX, kY:el.dataset.kY}; document.addEventListener('mousemove', handleDragMove); document.addEventListener('mouseup', handleDragEnd); document.addEventListener('touchmove', handleDragMove, {passive:false,capture:true}); document.addEventListener('touchend', handleDragEnd, {capture:true}); 
-}
-
+    e.preventDefault(); e.stopPropagation(); activeDragEl = el; const t = e.touches?e.touches[0]:e; dragStartCoords = {x:t.clientX, y:t.clientY}; const s = extension_settings[extensionName]; dragStartPos={xPct:parseFloat(s[el.dataset.kX])||50, yPx:parseFloat(s[el.dataset.kY])||0, kX:el.dataset.kX, kY:el.dataset.kY}; document.addEventListener('mousemove', handleDragMove); document.addEventListener('mouseup', handleDragEnd); document.addEventListener('touchmove', handleDragMove, {passive:false,capture:true}); document.addEventListener('touchend', handleDragEnd, {capture:true}); }
 function handleDragMove(e) { if(!activeDragEl)return; e.preventDefault(); e.stopPropagation(); const t = e.touches?e.touches[0]:e; const dx = t.clientX-dragStartCoords.x; const s = extension_settings[extensionName]; if(s.mobileStyle!=='docked'||dragStartPos.kX!=='x'){const dy = dragStartCoords.y-t.clientY; let ny=dragStartPos.yPx+dy; if(ny<0)ny=0; s[dragStartPos.kY]=ny+'px';} s[dragStartPos.kX]=(dragStartPos.xPct+((dx/window.innerWidth)*100))+'%'; requestAnimationFrame(updatePosition); }
 function handleDragEnd() { if(!activeDragEl)return; saveSettingsDebounced(); activeDragEl=null; document.removeEventListener('mousemove', handleDragMove); document.removeEventListener('mouseup', handleDragEnd); document.removeEventListener('touchmove', handleDragMove); document.removeEventListener('touchend', handleDragEnd); }
